@@ -4,3 +4,4 @@ flask_socketio==5.3.4
 python-dotenv
 gevent
 gevent-websocket
+requests
