@@ -1,3 +1,6 @@
+import gevent.monkey
+gevent.monkey.patch_all()  # Ensure this is the first thing done in your code!
+
 import os
 import requests
 from flask import Flask, jsonify, Response, request
@@ -45,10 +48,12 @@ def handle_message(msg):
 
     # Send the message to the n8n webhook
     n8n_url = "https://margusengso.app.n8n.cloud/webhook/703b38d1-2ba1-45ad-86d2-458031dc1e4f"
+    headers = {
+        "Content-Type": "application/json"
+    }
     try:
-        # Make the POST request to n8n
-        response = requests.post(n8n_url, json={"the_text": msg}, timeout=10)
-
+        # Make the POST request to n8n with headers
+        response = requests.post(n8n_url, json={"the_text": msg}, headers=headers, timeout=10)
         if response.status_code == 200:
             data = response.json()
 
@@ -61,10 +66,9 @@ def handle_message(msg):
             else:
                 emit('response', {'status': 'error', 'message': "No file ID returned from n8n."})
         else:
-            emit('response', {'status': 'error', 'message': "Failed to get a response from n8n."})
+            emit('response', {'status': 'error', 'message': f"Failed to get a response from n8n. Status code: {response.status_code}"})
     except Exception as e:
         emit('response', {'status': 'error', 'message': f"An error occurred: {str(e)}"})
-
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5001))
