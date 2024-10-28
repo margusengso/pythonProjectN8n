@@ -1,0 +1,6 @@
+Flask==3.0.3
+gunicorn==20.0.4
+flask_socketio==5.3.4
+python-dotenv
+gevent
+gevent-websocket
