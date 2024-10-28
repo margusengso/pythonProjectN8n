@@ -1,7 +1,7 @@
 import os
 import requests
 from flask import Flask, jsonify, Response, request
-from flask_socketio import SocketIO, send
+from flask_socketio import SocketIO, emit
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -56,13 +56,13 @@ def handle_message(msg):
             if file_id:
                 proxy_url = f"https://pythonprojectn8n.onrender.com/proxy-audio?file_id={file_id}"
                 reply = f"Server says: Audio URL: {proxy_url}"
-                send(reply)  # Send back the reply via WebSocket
+                emit('response', reply)  # Emit the response to the client
             else:
-                send("Server says: No file ID returned from n8n.")
+                emit('response', "Server says: No file ID returned from n8n.")
         else:
-            send("Server says: Failed to get a response from n8n.")
+            emit('response', "Server says: Failed to get a response from n8n.")
     except Exception as e:
-        send(f"Server says: An error occurred - {str(e)}")
+        emit('response', f"Server says: An error occurred - {str(e)}")
 
 
 if __name__ == '__main__':
