@@ -47,7 +47,8 @@ def handle_message(msg):
     n8n_url = "https://margusengso.app.n8n.cloud/webhook/703b38d1-2ba1-45ad-86d2-458031dc1e4f"
     try:
         # Make the POST request to n8n
-        response = requests.post(n8n_url, json={"the_text": msg})
+        response = requests.post(n8n_url, json={"the_text": msg}, timeout=10)
+
         if response.status_code == 200:
             data = response.json()
 
@@ -55,14 +56,14 @@ def handle_message(msg):
             file_id = data.get("id")
             if file_id:
                 proxy_url = f"https://pythonprojectn8n.onrender.com/proxy-audio?file_id={file_id}"
-                reply = f"Server says: Audio URL: {proxy_url}"
-                emit('response', reply)  # Emit the response to the client
+                reply = {'status': 'success', 'url': proxy_url}
+                emit('response', reply)  # Emit the structured response to the client
             else:
-                emit('response', "Server says: No file ID returned from n8n.")
+                emit('response', {'status': 'error', 'message': "No file ID returned from n8n."})
         else:
-            emit('response', "Server says: Failed to get a response from n8n.")
+            emit('response', {'status': 'error', 'message': "Failed to get a response from n8n."})
     except Exception as e:
-        emit('response', f"Server says: An error occurred - {str(e)}")
+        emit('response', {'status': 'error', 'message': f"An error occurred: {str(e)}"})
 
 
 if __name__ == '__main__':
