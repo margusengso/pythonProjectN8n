@@ -44,7 +44,7 @@ def handle_message(msg):
     print(f"Message received: {msg}")
 
     # Send the message to the n8n webhook
-    n8n_url = "https://margusengso.app.n8n.cloud/webhook-test/703b38d1-2ba1-45ad-86d2-458031dc1e4f"
+    n8n_url = "https://margusengso.app.n8n.cloud/webhook/703b38d1-2ba1-45ad-86d2-458031dc1e4f"
     try:
         # Make the POST request to n8n
         response = requests.post(n8n_url, json={"the_text": msg})
