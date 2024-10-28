@@ -57,14 +57,18 @@ def handle_message(msg):
         if response.status_code == 200:
             data = response.json()
 
-            # Assume n8n returns the file ID in the JSON response
-            file_id = data.get("id")
-            if file_id:
-                proxy_url = f"https://pythonprojectn8n.onrender.com/proxy-audio?file_id={file_id}"
-                reply = {'status': 'success', 'url': proxy_url}
-                emit('response', reply)  # Emit the structured response to the client
+            # Since the response is a list, access the first element
+            if isinstance(data, list) and len(data) > 0:
+                file_info = data[0]  # Get the first item from the list
+                file_id = file_info.get("id")
+                if file_id:
+                    proxy_url = f"https://pythonprojectn8n.onrender.com/proxy-audio?file_id={file_id}"
+                    reply = {'status': 'success', 'url': proxy_url}
+                    emit('response', reply)  # Emit the structured response to the client
+                else:
+                    emit('response', {'status': 'error', 'message': "No file ID found in the response."})
             else:
-                emit('response', {'status': 'error', 'message': "No file ID returned from n8n."})
+                emit('response', {'status': 'error', 'message': "Unexpected response format from n8n."})
         else:
             emit('response', {'status': 'error', 'message': f"Failed to get a response from n8n. Status code: {response.status_code}"})
     except Exception as e:
