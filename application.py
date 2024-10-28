@@ -1,8 +1,8 @@
 import os
+import requests
 from flask import Flask, jsonify, Response, request
 from flask_socketio import SocketIO, send
 from dotenv import load_dotenv
-import requests
 
 # Load environment variables from .env file
 load_dotenv()
@@ -43,14 +43,25 @@ def proxy_audio():
 def handle_message(msg):
     print(f"Message received: {msg}")
 
-    # Use the received message as the file ID if that's the format you're expecting
-    file_id = msg.strip()
+    # Send the message to the n8n webhook
+    n8n_url = "https://margusengso.app.n8n.cloud/webhook-test/703b38d1-2ba1-45ad-86d2-458031dc1e4f"
+    try:
+        response = requests.post(n8n_url, json={"the_text": msg})
+        if response.status_code == 200:
+            data = response.json()
 
-    # Construct the proxy URL using the file ID
-    proxy_url = f"https://pythonprojectn8n.onrender.com/proxy-audio?file_id={file_id}"
+            # Assume n8n returns the file ID in the JSON response
+            file_id = data.get("id")
+            if file_id:
+                proxy_url = f"https://pythonprojectn8n.onrender.com/proxy-audio?file_id={file_id}"
+                reply = f"Server says: Audio URL: {proxy_url}"
+            else:
+                reply = "Server says: No file ID returned from n8n."
+        else:
+            reply = "Server says: Failed to get a response from n8n."
+    except Exception as e:
+        reply = f"Server says: An error occurred - {str(e)}"
 
-    # Reply with the proxy URL included
-    reply = f"Server says: You sent '{msg}'. Audio URL: {proxy_url}"
     send(reply)
 
 
