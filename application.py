@@ -13,6 +13,7 @@ load_dotenv()
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('WS_SECRET_KEY')
 
+
 # Initialize SocketIO with gevent
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="gevent")
 
