@@ -1,79 +1,62 @@
-import gevent.monkey
-gevent.monkey.patch_all()  # Ensure this is the first thing done in your code!
-
+import threading
+import time
 import os
-import requests
-from flask import Flask, jsonify, Response, request
-from flask_socketio import SocketIO, emit
-from dotenv import load_dotenv
+import schedule
+import psutil
+from app import create_app, socketio
+from app.tasks import job1
 
-# Load environment variables from .env file
-load_dotenv()
+app = create_app()
 
-app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('WS_SECRET_KEY')
+def kill_existing_scheduler_processes():
+    current_pid = os.getpid()
+    for proc in psutil.process_iter(attrs=['pid', 'name', 'cmdline']):
+        try:
+            if proc.info['pid'] != current_pid and 'python' in proc.info['name']:
+                cmdline = ' '.join(proc.info['cmdline'])
+                if 'application.py' in cmdline:  # Adjust to match your script name
+                    print(f"Killing existing process {proc.info['pid']} running: {cmdline}")
+                    proc.terminate()
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
 
-# Initialize SocketIO with gevent
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="gevent")
+# Test task
+def my_task():
+    job1()
+    print("Task executed! " + str(int(time.time())))
 
+def setup_testing_scheduler():
+    schedule.every(10).seconds.do(my_task)
 
-@app.route('/', methods=['GET'])
-def home():
-    return jsonify({'message': 'Hello n8n project'})
+def setup_real_scheduler():
+    schedule.every(6).hours.do(my_task)
 
-
-@app.route('/proxy-audio', methods=['GET'])
-def proxy_audio():
-    file_id = request.args.get('file_id')
-    google_drive_url = f"https://drive.google.com/uc?export=download&id={file_id}"
-
-    headers = {
-        "User-Agent": "Mozilla/5.0"
-    }
-
-    response = requests.get(google_drive_url, headers=headers, stream=True)
-    if response.status_code == 200:
-        return Response(
-            response.iter_content(chunk_size=1024),
-            content_type='audio/mpeg',
-            headers={'Content-Disposition': 'inline'}
-        )
-    else:
-        return Response('Unable to fetch the audio file', status=400)
-
-
-@socketio.on('message')
-def handle_message(msg):
-    print(f"Message received: {msg}")
-
-    # Send the message to the n8n webhook
-    n8n_url = "https://margusengso.app.n8n.cloud/webhook/703b38d1-2ba1-45ad-86d2-458031dc1e4f"
-    headers = {
-        "Content-Type": "application/json"
-    }
-    try:
-        # Make the POST request to n8n with headers
-        response = requests.post(n8n_url, json={"the_text": msg}, headers=headers, timeout=10)
-        if response.status_code == 200:
-            data = response.json()
-
-            # Since the response is a list, access the first element
-            if isinstance(data, list) and len(data) > 0:
-                file_info = data[0]  # Get the first item from the list
-                file_id = file_info.get("id")
-                if file_id:
-                    proxy_url = f"https://pythonprojectn8n.onrender.com/proxy-audio?file_id={file_id}"
-                    reply = {'status': 'success', 'url': proxy_url}
-                    emit('response', reply)  # Emit the structured response to the client
-                else:
-                    emit('response', {'status': 'error', 'message': "No file ID found in the response."})
-            else:
-                emit('response', {'status': 'error', 'message': "Unexpected response format from n8n."})
-        else:
-            emit('response', {'status': 'error', 'message': f"Failed to get a response from n8n. Status code: {response.status_code}"})
-    except Exception as e:
-        emit('response', {'status': 'error', 'message': f"An error occurred: {str(e)}"})
+# Run the scheduler
+def run_scheduler(sleep_time, stop_event_flag):
+    while not stop_event_flag.is_set():  # Run until the stop event is triggered
+        schedule.run_pending()  # Executes tasks that are due
+        print(f"Scheduler sleeping for {sleep_time} seconds... {int(time.time())}")
+        stop_event_flag.wait(timeout=sleep_time)  # Sleep with the ability to stop early
 
 if __name__ == '__main__':
-    port = int(os.getenv('PORT', 5001))
-    socketio.run(app, debug=True, host='0.0.0.0', port=port)
+    kill_existing_scheduler_processes()
+
+    # setup_testing_scheduler()  # Testing scheduler
+    setup_real_scheduler()  # Real scheduler
+
+    stop_event = threading.Event()
+    # scheduler_thread = threading.Thread(target=run_scheduler, args=(2, stop_event), daemon=True) # Testing scheduler
+    scheduler_thread = threading.Thread(target=run_scheduler, args=(7200, stop_event), daemon=True)  # Real scheduler
+    scheduler_thread.start()
+
+    try:
+        port = int(os.getenv('PORT', 5001))
+        socketio.run(app, debug=True, host='0.0.0.0', port=port, use_reloader=False)
+    except KeyboardInterrupt:
+        print("\nGracefully shutting down...")
+
+        # Signal the scheduler thread to stop
+        stop_event.set()
+        scheduler_thread.join()  # Wait for the scheduler thread to finish
+
+        print("Shutdown complete.")
