@@ -4,7 +4,11 @@ from flask_socketio import emit
 def message_received(msg):
     print(f"Message received: {msg}")
 
-    # Send the message to the n8n webhook
+    if len(msg) < 1:
+        emit('response', {'status': 'error', 'message': "empty string received"})
+        return
+
+        # Send the message to the n8n webhook
     n8n_url = "https://margusengso.app.n8n.cloud/webhook/703b38d1-2ba1-45ad-86d2-458031dc1e4f"
     headers = {
         "Content-Type": "application/json"

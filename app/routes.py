@@ -1,19 +1,19 @@
 
-import schedule
+# import schedule
 import requests
 from flask import jsonify, Response, request
 
 def init_routes(app):
     @app.route('/', methods=['GET'])
     def home2():
-        schedule.run_pending()
+        # schedule.run_pending()
         return jsonify({'message': 'Hello n8n project'})
 
     @app.route('/proxy-audio', methods=['GET'])
     def proxy_audio():
         file_id = request.args.get('file_id')
         google_drive_url = f"https://drive.google.com/uc?export=download&id={file_id}"
-        schedule.run_pending()
+        # schedule.run_pending()
         headers = {
             "User-Agent": "Mozilla/5.0"
         }
