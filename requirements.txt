@@ -5,6 +5,3 @@ python-dotenv
 gevent
 gevent-websocket
 requests
-flask_apscheduler
-schedule
-psutil
