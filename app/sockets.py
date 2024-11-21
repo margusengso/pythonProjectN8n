@@ -3,7 +3,7 @@ from flask_socketio import emit
 from os import getenv
 
 def message_received(msg):
-    if len(msg) < 1:
+    if len(msg.message) < 1:
         emit('response', {'status': 'error', 'message': "empty string received"})
         return
 
@@ -13,7 +13,7 @@ def message_received(msg):
         "Content-Type": "application/json"
     }
     try:
-        response = requests.post(n8n_url, json={"the_text": msg}, headers=headers, timeout=10)
+        response = requests.post(n8n_url, json={"the_text": msg.message}, headers=headers, timeout=10)
         if response.status_code == 200:
             data = response.json()
 
